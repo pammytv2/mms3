@@ -10,58 +10,96 @@ function handleRowClick(receiveNumber: string) {
 }
 const treeValue = ref<any[]>([]);
 
-const treeTableValue = ref<any[]>([]);
+const allReceiveList = ref<any[]>([]);
 
-// Add searchQuery and onSearch
+
 const searchQuery = ref('');
+
 const startDate = ref('');
 const endDate = ref('');
 
+// กำหนด endDate เป็นวันปัจจุบัน
+function getTodayStr() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+endDate.value = getTodayStr();
+
+// กรองข้อมูลตาม searchQuery
+import { computed } from 'vue';
+const filteredReceiveList = computed(() => {
+    let list = allReceiveList.value;
+    // filter by searchQuery
+    if (searchQuery.value) {
+        const q = searchQuery.value.trim().toLowerCase();
+        list = list.filter(item => {
+            const receive = item.receiveNumber.toLowerCase();
+            const invoice = item.invoiceNumber.toLowerCase();
+            // ค้นหาทั้งแบบ contains และ startsWith
+            return (
+                receive.includes(q) ||
+                invoice.includes(q) ||
+                receive.startsWith(q) ||
+                invoice.startsWith(q)
+            );
+        });
+    }
+    // filter by date range
+    if (startDate.value) {
+        list = list.filter(item => item.receiveDate >= startDate.value.replace(/-/g, ''));
+    }
+    if (endDate.value) {
+        list = list.filter(item => item.receiveDate <= endDate.value.replace(/-/g, ''));
+    }
+    return list;
+});
+
 function onSearch() {
-    // Implement your search logic here
-    console.log('Searching for:', searchQuery.value);
+    // ไม่ต้องทำอะไร เพราะ filteredReceiveList จะอัปเดตอัตโนมัติ
 }
 
 function onDateSearch() {
-    // Implement your date search logic here
-    console.log('Searching from', startDate.value, 'to', endDate.value);
+    // ไม่ต้องทำอะไร เพราะ filteredReceiveList จะอัปเดตอัตโนมัติ
 }
 
 onMounted(() => {
     treeValue.value = NodeService.getTreeNodesData();
-    // ตัวอย่างข้อมูลสำหรับตาราง
-    treeTableValue.value = [
+    // mock data สำหรับตาราง (แต่ละ receive มี items ของตัวเอง)
+    allReceiveList.value = [
         {
-            key: '0',
-            data: {
-                receiveNumber: 'RCV-20250901-001',
-                receiveDate: '2025-09-01',
-                invoiceNumber: 'INV-20250901-001',
-                supplier: 'ABC Supply Co.',
-                status: 'Completed'
-            },
-            children: [
-                {
-                    key: '0-0',
-                    data: {
-                        receiveNumber: 'RCV-20250901-001-1',
-                        receiveDate: '2025-09-01',
-                        invoiceNumber: 'INV-20250901-001',
-                        supplier: 'ABC Supply Co.',
-                        status: 'Completed'
-                    }
-                }
+            receiveNumber: 'M250258E',
+            receiveDate: '20250901',
+            invoiceNumber: 'INV-20250901-001',
+            vendorCode: 'ABC123',
+            vendorName: 'ABC Supply Co.',
+            items: [
+                { no: 1, itemNo: 'ITEM-001', desc: 'Paracetamol 500mg', unit: 'Box', lotExpireDate: '2026-01-31', invoiceNumber: 'INV-20250901-001', lotSplitStatus: 'Not Specified', lotStatus: 'N/A', activeStatus: 'Active', iqaStatus: 'N/A' },
+                { no: 2, itemNo: 'ITEM-002', desc: 'Amoxicillin 250mg', unit: 'Bottle', lotExpireDate: '2026-03-15', invoiceNumber: 'INV-20250901-001', lotSplitStatus: 'Not Specified', lotStatus: 'N/A', activeStatus: 'Not Active', iqaStatus: 'N/A' }
             ]
         },
         {
-            key: '1',
-            data: {
-                receiveNumber: 'RCV-20250902-002',
-                receiveDate: '2025-09-02',
-                invoiceNumber: 'INV-20250902-002',
-                supplier: 'XYZ Trading',
-                status: 'Pending'
-            }
+            receiveNumber: 'RT25080001',
+            receiveDate: '20250902',
+            invoiceNumber: 'INV-20250902-002',
+            vendorCode: 'XYZ123',
+            vendorName: 'XYZ Trading',
+            items: [
+                { no: 1, itemNo: 'ITEM-003', desc: 'Ibuprofen 200mg', unit: 'Box', lotExpireDate: '2026-05-10', invoiceNumber: 'INV-20250902-002', lotSplitStatus: 'Lot Required', lotStatus: 'N/A', activeStatus: 'Active', iqaStatus: 'N/A' }
+            ]
+        },
+        {
+            receiveNumber: 'RC25080001',
+            receiveDate: '20250903',
+            invoiceNumber: 'INV-20250904-003',
+            vendorCode: 'XYZ14',
+            vendorName: 'XYZ Trading',
+            items: [
+                { no: 1, itemNo: 'ITEM-004', desc: 'Cefalexin 500mg', unit: 'Box', lotExpireDate: '2027-01-01', invoiceNumber: 'INV-20250904-003', lotSplitStatus: 'No Lot Required', lotStatus: 'N/A', activeStatus: 'Active', iqaStatus: 'N/A' },
+                { no: 2, itemNo: 'ITEM-005', desc: 'Vitamin C 1000mg', unit: 'Bottle', lotExpireDate: '2027-02-01', invoiceNumber: 'INV-20250904-003', lotSplitStatus: 'Not Specified', lotStatus: 'N/A', activeStatus: 'Not Active', iqaStatus: 'N/A' }
+            ]
         }
     ];
 });
@@ -81,9 +119,9 @@ onMounted(() => {
                     <input id="endDate" v-model="endDate" type="date" class="p-2 border rounded md:w-40" />
                     
                     
-                    <button type="button" class="px-4 py-2 bg-green-500 text-white rounded h-fit md:mb-0 mt-0" @click="onDateSearch"> Search by Date</button>
+                    <button type="button" class="px-4 py-2 bg-green-500 text-white rounded h-fit md:mb-0 mt-0" @click="onDateSearch"> Sync Date</button>
                 </div>
-
+<!-- 
                 <div class="flex gap-4 ml-1">
                     <button type="button" class="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded h-fit md:mb-0 mt-0 flex items-center gap-2" @click="">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -91,13 +129,13 @@ onMounted(() => {
                         </svg>
                         Sync Receive
                     </button>
-                </div>
+                </div> -->
             </div>
         </form>
     </div>
     <div class="card">
         <div class="font-semibold text-xl mb-4">Receive Material List</div>
-        <!-- ตารางตัวอย่างแบบ HTML ธรรมดา -->
+        <!-- ตารางแสดงผลลัพธ์การค้นหา -->
         <table class="min-w-full border border-gray-300 mb-6">
             <thead class="bg-gray-100">
                 <tr>
@@ -109,19 +147,15 @@ onMounted(() => {
                 </tr>
             </thead>
             <tbody>
-                <tr class="cursor-pointer hover:bg-blue-100" @click="handleRowClick('RCV-20250901-001')">
-                    <td class="border px-4 py-2">RCV-20250901-001</td>
-                    <td class="border px-4 py-2">2025-09-01</td>
-                    <td class="border px-4 py-2">INV-20250901-001</td>
-                    <td class="border px-4 py-2">ABC Supply Co.</td>
-                    <td class="border px-4 py-2">ABC123</td>
+                <tr v-for="item in filteredReceiveList" :key="item.receiveNumber" class="cursor-pointer hover:bg-blue-100" @click="handleRowClick(item.receiveNumber)">
+                    <td class="border px-4 py-2">{{ item.receiveNumber }}</td>
+                    <td class="border px-4 py-2">{{ item.receiveDate }}</td>
+                    <td class="border px-4 py-2">{{ item.invoiceNumber }}</td>
+                    <td class="border px-4 py-2">{{ item.vendorCode }}</td>
+                    <td class="border px-4 py-2">{{ item.vendorName }}</td>
                 </tr>
-                <tr class="cursor-pointer hover:bg-blue-100" @click="handleRowClick('RCV-20250902-002')">
-                    <td class="border px-4 py-2">RCV-20250902-002</td>
-                    <td class="border px-4 py-2">2025-09-02</td>
-                    <td class="border px-4 py-2">INV-20250902-002</td>
-                    <td class="border px-4 py-2">XYZ123</td>
-                    <td class="border px-4 py-2">XYZ Trading</td>
+                <tr v-if="filteredReceiveList.length === 0">
+                    <td colspan="5" class="text-center py-4">No data found</td>
                 </tr>
             </tbody>
         </table>
