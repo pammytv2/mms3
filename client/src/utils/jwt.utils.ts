@@ -1,5 +1,5 @@
 import { SignJWT } from 'jose';
-import encode from 'jwt-encode';
+// import encode from 'jwt-encode';
 
 // Secret key for JWT signing - using a constant since this is for development only
 const JWT_SECRET = 'lsd@lkilogmL';
