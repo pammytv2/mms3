@@ -6,12 +6,77 @@ const toast = useToast();
 const confirmPopup = useConfirm();
 
 function getActiveStatusClass(status: string) {
-    if (status === 'Active') return 'text-green-600 font-semibold';
-    if (status === 'Not Active') return 'text-red-600 font-semibold';
+    if (status === 'Active') return 'bg-green-100 text-green-600 font-semibold';
+    if (status === 'Not Active') return 'bg-red-100 text-red-600 font-semibold';
     return '';
 }
+
+function getIQAStatusClass(status: string) {
+    if (status === 'Pending') return 'bg-yellow-200 text-yellow-700 font-semibold px-2 py-1 rounded';
+    if (status === 'Passed') return 'bg-green-200 text-green-700 font-semibold px-2 py-1 rounded';
+    if (status === 'Failed') return 'bg-red-200 text-red-700 font-semibold px-2 py-1 rounded';
+    return 'px-2 py-1 rounded';
+}
 // สำหรับ v-model ของแต่ละ select ในตัวอย่าง
-import { reactive, ref, toRefs, nextTick } from 'vue';
+import { reactive, ref, toRefs, nextTick, computed } from 'vue';
+// mock data สำหรับหัวข้อ (ควรดึงจาก API จริงในอนาคต)
+const receiveNumber = 'RC25070359';
+const receiveDate = '2025-07-03';
+const invoiceNumber = 'IVLSD-250029';
+const specialExpDate = '2025-09-01';
+
+// mock data สำหรับแถวในตาราง (ควรย้ายไปใช้จริงจาก backend ในอนาคต)
+const tableRows = reactive([
+    {
+        no: '1',
+        itemNo: 'ITEM-001',
+        description: 'Paracetamol 500mg',
+        unit: 'Box',
+        lotExpireDate: '2025-01-31',
+        invoice: 'INV-20250901-001',
+        lotSplitStatusIdx: 0,
+        activeStatus: 'Active',
+        iqaStatus: 'Pending'
+    },
+    {
+        no: '2',
+        itemNo: 'ITEM-002',
+        description: 'Amoxicillin 250mg',
+        unit: 'Bottle',
+        lotExpireDate: '2025-03-15',
+        invoice: 'INV-20250902-002',
+        lotSplitStatusIdx: 2,
+        activeStatus: 'Not Active',
+        iqaStatus: 'Failed'
+    },
+    {
+        no: '3',
+        itemNo: 'ITEM-003',
+        description: 'Amoxicillin 250mg',
+        unit: 'Bottle',
+        lotExpireDate: '2025-03-15',
+        invoice: 'INV-20250902-002',
+        lotSplitStatusIdx: 1,
+        activeStatus: 'Not Active',
+        iqaStatus: 'Passed'
+    }
+]);
+
+const filteredRows = computed(() => {
+    if (!searchQuery.value) return tableRows;
+    const q = searchQuery.value.toLowerCase();
+    return tableRows.filter(
+        (row) =>
+            row.no.includes(q) ||
+            row.itemNo.toLowerCase().includes(q) ||
+            row.description.toLowerCase().includes(q) ||
+            row.unit.toLowerCase().includes(q) ||
+            row.lotExpireDate.includes(q) ||
+            row.invoice.toLowerCase().includes(q) ||
+            row.activeStatus.toLowerCase().includes(q) ||
+            row.iqaStatus.toLowerCase().includes(q)
+    );
+});
 // สำหรับ scroll กลับไปยังตาราง Detail
 const detailTableRef = ref<HTMLElement | null>(null);
 
@@ -25,7 +90,7 @@ function getLotSplitStatusClass(status: string) {
 import { useRoute } from 'vue-router';
 const route = useRoute();
 
-const receiveNumber = route.params.receiveNumber;
+// const receiveNumber = route.params.receiveNumber;
 const expireDate = ref('');
 
 // Dialog state
@@ -40,9 +105,29 @@ interface LotRow {
     unit: string;
     expireDate: string;
 }
-// สมมุติว่ามี 2 แถว (ขยายได้ตามจำนวนจริง)
-const allLotRows = reactive<LotRow[][]>([[{ no: '1', lotNo: 'A001', qty: '10', unit: 'Box', expireDate: '2026-01-31' }], [{ no: '1', lotNo: 'B002', qty: '5', unit: 'Bottle', expireDate: '2026-03-15' }]]);
-const lotRows = ref<LotRow[]>([]); // ใช้สำหรับ dialog เท่านั้น
+function expireDateEnd(date: string) {
+    if (!date) return '';
+    const today = new Date();
+    const expire = new Date(date);
+    const diffTime = expire.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) {
+        return 'bg-red-200 text-red-700 font-semibold px-2 py-1 rounded'; // หมดอายุ
+    } else if (diffDays <= 15) {
+        return 'bg-yellow-200 text-yellow-700 font-semibold px-2 py-1 rounded'; // ใกล้หมดอายุ
+    }
+    return '';
+}
+// ข้อมูล lotRows mock ให้ครบ 3 แถว (ตาม tableRows)
+interface LotRowEx extends LotRow {
+    takeOutQty?: string;
+}
+const allLotRows = reactive<LotRowEx[][]>([
+    [{ no: '1', lotNo: 'A001', qty: '10', unit: 'Box', expireDate: '2025-09-01', takeOutQty: '' }],
+    [{ no: '1', lotNo: 'B002', qty: '5', unit: 'Bottle', expireDate: '2025-03-15', takeOutQty: '' }],
+    [{ no: '1', lotNo: 'C003', qty: '8', unit: 'Bottle', expireDate: '2025-03-15', takeOutQty: '' }]
+]);
+const lotRows = ref<LotRowEx[]>([]); // ใช้สำหรับ dialog เท่านั้น
 
 function openEditDialog(rowIndex: number) {
     dialogRowIndex.value = rowIndex;
@@ -109,7 +194,7 @@ function confirm(event) {
             closeEditDialog(true);
         }
     });
-}      
+}
 
 function Success() {
     toast.add({ severity: 'success', summary: 'Success', detail: 'Submitted to IQA', life: 3000 });
@@ -120,36 +205,37 @@ function Success() {
     <div class="card mb-6">
         <div class="text-2xl font-bold mb-4">Receive Material Detail</div>
         <!-- card Detail -->
-        <div class="flex flex-col sm:flex-row justify-center items-stretch gap-8 mt-2">
-            <div class="flex justify-center flex-1">
-                <div class="card w-full max-w-sm border border-blue-200 rounded-2xl shadow-lg p-6 bg-gradient-to-br from-white via-gray-50 to-gray-100 transition-transform duration-200 hover:scale-105 hover:shadow-2xl hover:border-blue-300">
-                    <div class="mb-1">
-                        <span class="inline-block text-muted-color font-medium mr-2">Receive NO:</span>
-                        <span class="inline-block font-semibold">RCV-20240601-001</span>
-                    </div>
-                    <div>
-                        <span class="inline-block text-muted-color font-medium">Receive Date:</span>
-                        <span class="inline-block font-semibold ml-2">2024-06-01</span>
-                    </div>
-                    <div class="mb-1">
-                        <span class="block text-muted-color font-medium mb-1">Invoice No:</span>
-                        <span class="block font-semibold mb-1">INV-20240601-001</span>
-                    </div>
-                    <div class="mb-2">
-                        <span class="block text-muted-color font-medium mb-1">Special Exp:</span>
-                        <span class="block font-semibold">2026-06-01</span>
-                    </div>
+        <div class="flex space-x-4 flex-col sm:flex-row justify-center items-stretch gap-8 mt-2">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="ml-1">
+                    <span class="inline-block text-muted-color font-medium mr-2">Receive Number:</span>
+                    <span class="inline-block font-semibold bg-blue-100 text-blue-600 px-2 py-1 rounded cursor-pointer select-text">{{ receiveNumber }}</span>
+                </div>
+                <div>
+                    <span class="inline-block text-muted-color font-medium mr-2">Receive Date:</span>
+                    <span class="inline-block font-semibold bg-blue-100 text-blue-600 px-2 py-1 rounded cursor-pointer select-text">{{ receiveDate }}</span>
+                </div>
+
+                <div class="ml-1">
+                    <span class="inline-block text-muted-color font-medium mb-2 mr-2">Invoice Number:</span>
+                    <span class="inline-block font-semibold mb-2 bg-blue-100 text-blue-600 px-2 py-1 rounded cursor-pointer select-text">{{ invoiceNumber }}</span>
+                </div>
+                <div class="ml-1">
+                    <span class="inline-block text-muted-color font-medium mb-2 mr-2">Special Exp:</span>
+                    <span class="inline-block font-semibold bg-blue-100 text-blue-600 px-2 py-1 rounded cursor-pointer select-text">{{ specialExpDate }}</span>
                 </div>
             </div>
-            <div class="flex justify-center flex-1 sm:justify-start mt-2">
-                <div class="card w-full max-w-sm border border-gray-200 rounded-2xl shadow-lg p-6 bg-gradient-to-br from-white via-gray-50 to-gray-100 transition-transform duration-200 hover:scale-105 hover:shadow-2xl hover:border-blue-300">
+
+            <div class="grid justify-items-end sm:justify-items-start sm:flex-1 sm:flex sm:justify-end gap-4">
+                <div class="flex justify-center flex-1 sm:justify-start mt-2">
                     <div class="mb-1">
-                        <span class="block text-muted-color font-medium mb-1">Vendor Details:</span>
-                        <span class="block font-semibold mb-1">ABC Pharma Co., Ltd.</span>
+                        <span class="inline-block text-muted-color font-medium mb-1 mr-2">Vendor Details:</span>
+                        <span class="inline-block font-semibold bg-blue-100 text-blue-600 px-2 py-1 rounded cursor-pointer select-text">ABC Pharma Co., Ltd.</span>
                     </div>
-                    <div>
-                        <span class="block text-muted-color font-medium mb-1">Contact:</span>
-                        <span class="block font-semibold">02-123-4567</span>
+
+                    <div class="ml-4">
+                        <span class="inline-block text-muted-color font-medium mb-1 mr-2">Contact:</span>
+                        <span class="inline-block font-semibold bg-blue-100 text-blue-600 px-2 py-1 rounded cursor-pointer select-text">02-123-4567</span>
                     </div>
                 </div>
             </div>
@@ -163,13 +249,9 @@ function Success() {
                 <input id="search" v-model="searchQuery" type="text" placeholder="Search" class="p-2 border rounded md:w-48" />
                 <button type="button" class="px-4 py-2 bg-blue-500 text-white rounded" @click="onSearch">Search</button>
             </form>
-            <div class="w-full md:w-1/3 md:mr-2">
-                <label for="expireDate" class="block text-sm font-medium mb-1">Expire Date</label>
-                <input type="date" id="expireDate" v-model="expireDate" class="input p-2 border rounded w-full md:w-60" />
-            </div>
         </div>
 
-    <table ref="detailTableRef" class="min-w-full border border-gray-300 mb-6">
+        <table ref="detailTableRef" class="min-w-full border border-gray-300 mb-6">
             <thead class="bg-gray-100">
                 <tr>
                     <th class="border px-4 py-2">Select</th>
@@ -177,86 +259,35 @@ function Success() {
                     <th class="border px-4 py-2">Item No</th>
                     <th class="border px-4 py-2">Item Description</th>
                     <th class="border px-4 py-2">Unit</th>
-                    <th class="border px-4 py-2">Lot Expire Date</th>
                     <th class="border px-4 py-2">Invoice Number</th>
                     <th class="border px-4 py-2">Lot Split Status</th>
-                    <th class="border px-4 py-2">Lot Status</th>
                     <th class="border px-4 py-2">Active Status</th>
                     <th class="border px-4 py-2">IQA Status</th>
                     <th class="border px-4 py-2">Action</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
+                <tr v-for="(row, idx) in filteredRows" :key="row.no">
                     <td class="border px-4 py-2 text-center"><input type="checkbox" /></td>
-                    <td class="border px-4 py-2 text-center">1</td>
-                    <td class="border px-4 py-2">ITEM-001</td>
-                    <td class="border px-4 py-2">Paracetamol 500mg</td>
-                    <td class="border px-4 py-2 text-center">Box</td>
-                    <td class="border px-4 py-2 text-center">2026-01-31</td>
-                    <td class="border px-4 py-2">INV-20250901-001</td>
+                    <td class="border px-4 py-2 text-center">{{ row.no }}</td>
+                    <td class="border px-4 py-2">{{ row.itemNo }}</td>
+                    <td class="border px-4 py-2">{{ row.description }}</td>
+                    <td class="border px-4 py-2 text-center">{{ row.unit }}</td>
+                    <!-- <td class="border px-4 py-2 text-center">{{ row.lotExpireDate }}</td> -->
+                    <td class="border px-4 py-2">{{ row.invoice }}</td>
                     <td class="border px-4 py-2 text-center">
-                        <select class="border rounded px-2 py-1 w-full" v-model="lotSplitStatusList[0].value" :class="getLotSplitStatusClass(lotSplitStatusList[0].value)">
+                        <select class="border rounded px-2 py-1 w-full" v-model="lotSplitStatusList[row.lotSplitStatusIdx].value" :class="getLotSplitStatusClass(lotSplitStatusList[row.lotSplitStatusIdx].value)">
                             <option value="Not Specified">Not Specified</option>
                             <option value="Lot Required">Lot Required</option>
                             <option value="No Lot Required">No Lot Required</option>
                         </select>
                     </td>
-                    <td class="border px-4 py-2 text-center">N/A</td>
-                    <td class="border px-4 py-2 text-center" :class="getActiveStatusClass('Active')">Active</td>
-                    <td class="border px-4 py-2 text-center">N/A</td>
+                    <td class="border px-4 py-2 text-center" :class="getActiveStatusClass(row.activeStatus)">{{ row.activeStatus }}</td>
+                    <td class="border px-4 py-2 text-center" :class="getIQAStatusClass(row.iqaStatus)">{{ row.iqaStatus }}</td>
                     <td class="border px-4 py-2 text-center">
-                        <button class="px-2 py-1 bg-blue-500 text-white rounded" @click="openEditDialog(0)">Edit</button>
-                    </td>
-
-                </tr>
-                <tr>
-                    <td class="border px-4 py-2 text-center"><input type="checkbox" /></td>
-                    <td class="border px-4 py-2 text-center">2</td>
-                    <td class="border px-4 py-2">ITEM-002</td>
-                    <td class="border px-4 py-2">Amoxicillin 250mg</td>
-                    <td class="border px-4 py-2 text-center">Bottle</td>
-                    <td class="border px-4 py-2 text-center">2026-03-15</td>
-                    <td class="border px-4 py-2">INV-20250902-002</td>
-                    <td class="border px-4 py-2 text-center">
-                        <select class="border rounded px-2 py-1 w-full" v-model="lotSplitStatusList[2].value" :class="getLotSplitStatusClass(lotSplitStatusList[2].value)">
-                            <option value="Not Specified">Not Specified</option>
-                            <option value="Lot Required">Lot Required</option>
-                            <option value="No Lot Required">No Lot Required</option>
-                        </select>
-                    </td>
-                    <td class="border px-4 py-2 text-center">N/A</td>
-                    <td class="border px-4 py-2 text-center" :class="getActiveStatusClass('Not Active')">Not Active</td>
-                    <td class="border px-4 py-2 text-center">N/A</td>
-                    <td class="border px-4 py-2 text-center">
-                        <button class="px-2 py-1 bg-blue-500 text-white rounded" @click="openEditDialog(1)">Edit</button>
+                        <button class="px-2 py-1 bg-blue-500 text-white rounded" @click="openEditDialog(idx)">Edit</button>
                     </td>
                 </tr>
-
-                <tr>
-                    <td class="border px-4 py-2 text-center"><input type="checkbox" /></td>
-                    <td class="border px-4 py-2 text-center">3</td>
-                    <td class="border px-4 py-2">ITEM-003</td>
-                    <td class="border px-4 py-2">Amoxicillin 250mg</td>
-                    <td class="border px-4 py-2 text-center">Bottle</td>
-                    <td class="border px-4 py-2 text-center">2026-03-15</td>
-                    <td class="border px-4 py-2">INV-20250902-002</td>
-                    <td class="border px-4 py-2 text-center">
-                        <select class="border rounded px-2 py-1 w-full" v-model="lotSplitStatusList[1].value" :class="getLotSplitStatusClass(lotSplitStatusList[1].value)">
-                            <option value="Not Specified">Not Specified</option>
-                            <option value="Lot Required">Lot Required</option>
-                            <option value="No Lot Required">No Lot Required</option>
-                        </select>
-                    </td>
-                    <td class="border px-4 py-2 text-center">N/A</td>
-                    <td class="border px-4 py-2 text-center" :class="getActiveStatusClass('Not Active')">Not Active</td>
-                    <td class="border px-4 py-2 text-center">N/A</td>
-                    <td class="border px-4 py-2 text-center">
-                        <button class="px-2 py-1 bg-blue-500 text-white rounded" @click="openEditDialog(1)">Edit</button>
-                    </td>
-                </tr>
-                
-                
             </tbody>
         </table>
 
@@ -265,55 +296,74 @@ function Success() {
             <Button ref="popup" @click="Success()" icon="pi pi-check" label="Submit to IQA" class="mr-2"></Button>
         </div>
         <!-- Edit Dialog -->
-        <div v-if="isDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+        <div v-if="isDialogOpen" class="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-40">
             <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-4xl relative">
-            <div class="text-lg font-semibold mb-4">Lot Information</div>
-            <div class="overflow-x-auto mb-4">
-                <table class="min-w-full border border-gray-300">
-                <thead class="bg-gray-100">
-                    <tr>
-                    <th class="border px-2 py-1">No</th>
-                    <th class="border px-2 py-1">Lot No</th>
-                    <th class="border px-2 py-1">Qty</th>
-                    <th class="border px-2 py-1">UNIT</th>
-                    <th class="border px-2 py-1">EXPIRE DATE</th>
-                    <th class="border px-2 py-1">ACTIONS</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(row, idx) in lotRows" :key="idx">
-                    <td class="border px-2 py-1">
-                        <input type="text" class="border rounded px-2 py-1 w-24" placeholder="No" v-model="row.no" />
-                    </td>
-                    <td class="border px-2 py-1">
-                        <input type="text" class="border rounded px-2 py-1 w-24" placeholder="Lot No" v-model="row.lotNo" />
-                    </td>
-                        <td class="border px-2 py-1">
-                            <input type="number" min="0" class="border rounded px-2 py-1 w-20" placeholder="Qty" v-model="row.qty" step="any" />
-                    </td>
-                    <td class="border px-2 py-1">
-                        <input type="text" class="border rounded px-2 py-1 w-16" placeholder="Unit" v-model="row.unit" />
-                    </td>
-                    <td class="border px-2 py-1">
-                        <input type="date" class="border rounded px-2 py-1 w-36" v-model="row.expireDate" />
-                    </td>
-                    <td class="border px-2 py-1 text-center">
-                        <button class="text-red-500 hover:text-red-700" title="Delete Row" @click="removeRow(idx)" :disabled="lotRows.length === 1">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        </button>
-                    </td>
-                    </tr>
-                </tbody>
-                </table>
-            </div>
-            <div class="flex justify-end gap-2">
-                <button class="px-4 py-2 bg-blue-500 text-white rounded" @click="addRow">+ Add Row</button>
-                <button class="px-4 py-2 bg-red-500 text-white rounded" @click="closeEditDialog()">Cancel</button>
-                <ConfirmPopup></ConfirmPopup>
-                <Button ref="popup" @click="confirm($event)" icon="pi pi-check" label="Save" class="mr-2"></Button>
-            </div>
+                <div class="text-lg font-semibold mb-4">Lot Information</div>
+                <div class="overflow-x-auto mb-4">
+                    <table class="min-w-full border border-gray-300">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="border px-2 py-1">No</th>
+                                <th class="border px-2 py-1">Lot No</th>
+                                <th class="border px-2 py-1">Lot Qty</th>
+                                <th class="border px-2 py-1">UNIT</th>
+                                <th class="border px-2 py-1">TAKE OUT QTY</th>
+                                <th class="border px-2 py-1">BALANCE QTY</th>
+                                <th class="border px-2 py-1">EXPIRE DATE</th>
+                                <th class="border px-2 py-1">ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(row, idx) in lotRows" :key="idx">
+                                <td class="border px-2 py-1">
+                                    <input type="text" class="border rounded px-2 py-1 w-24" placeholder="No" v-model="row.no" />
+                                </td>
+                                <td class="border px-2 py-1">
+                                    <input type="text" class="border rounded px-2 py-1 w-24" placeholder="Lot No" v-model="row.lotNo" />
+                                </td>
+                                <td class="border px-2 py-1">
+                                    <input type="number" min="0" class="border rounded px-2 py-1 w-20" placeholder="Qty" v-model="row.qty" step="any" />
+                                </td>
+                                <td class="border px-2 py-1">
+                                    <input type="text" class="border rounded px-2 py-1 w-16" placeholder="Unit" v-model="row.unit" />
+                                </td>
+                                <td class="border px-2 py-1">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        :max="parseFloat(row.qty || '') || 0"
+                                        class="border rounded px-2 py-1 w-16"
+                                        placeholder="TAKE OUT QTY"
+                                        v-model="row.takeOutQty"
+                                        step="any"
+                                        @input="
+                                            if (parseFloat(row.takeOutQty || '') > (parseFloat(row.qty || '') || 0)) {
+                                                row.takeOutQty = (parseFloat(row.qty || '') || 0).toString();
+                                                toast.add({ severity: 'warn', summary: 'Warning', detail: 'Take Out Qty ห้ามเกิน Lot Qty', life: 2000 });
+                                            }
+                                        "
+                                    />
+                                </td>
+                                <td class="border px-2 py-1">
+                                {{ Math.max((parseFloat(row.qty || '') || 0) - (parseFloat(row.takeOutQty || '') || 0), 0) }}
+                                </td>
+                                <td class="border px-2 py-1">
+                                    <input type="date" class="border rounded px-2 py-1 w-36" v-model="row.expireDate" :class="expireDateEnd(row.expireDate)" />
+                                </td>
+                                <td class="border px-2 py-1 text-center">
+                                    <Button label="Delete" icon="pi pi-trash" severity="danger" style="width: auto" @click="removeRow(idx)" />
+                                </td>
+                            </tr>
+                        </tbody>
+
+                    </table>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button class="px-4 py-2 bg-blue-500 text-white rounded" @click="addRow">+ Add Row</button>
+                    <button class="px-4 py-2 bg-red-500 text-white rounded" @click="closeEditDialog()">Cancel</button>
+                    <ConfirmPopup></ConfirmPopup>
+                    <Button ref="popup" @click="confirm($event)" icon="pi pi-check" label="Save" class="mr-2"></Button>
+                </div>
             </div>
         </div>
     </div>

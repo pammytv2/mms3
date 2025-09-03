@@ -51,6 +51,9 @@ importers:
       '@rushstack/eslint-patch':
         specifier: ^1.8.0
         version: 1.12.0
+      '@types/jwt-encode':
+        specifier: ^1.0.3
+        version: 1.0.3
       '@types/node':
         specifier: ^24.3.0
         version: 24.3.0
@@ -699,6 +702,9 @@ packages:
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
+
+  '@types/jwt-encode@1.0.3':
+    resolution: {integrity: sha512-4IAoiMbBSbiUfYkBZYvj6Sj68d5qaaYeHfeoxQp5qpYkjOPcou9chpfEqw7OfoTQxsrS6HnTVN/RTCF866Z9sw==}
 
   '@types/node@24.3.0':
     resolution: {integrity: sha512-aPTXCrfwnDLj4VvXrm+UUCQjNEvJgNA8s5F1cvwQU+3KNltTOkBm1j30uNLyqqPNe7gE3KFzImYoZEfLhp4Yow==}
@@ -2802,6 +2808,8 @@ snapshots:
   '@rushstack/eslint-patch@1.12.0': {}
 
   '@types/estree@1.0.8': {}
+
+  '@types/jwt-encode@1.0.3': {}
 
   '@types/node@24.3.0':
     dependencies:

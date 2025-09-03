@@ -27,7 +27,7 @@ API.interceptors.request.use(
       if (import.meta.env.MODE === 'development') {
         // Set Authorization header with a specific token for development
         const payload = import.meta.env.VITE_DEV_TOKEN_PAYLOAD;
-        token = generateToken(payload);
+        token = await generateToken(payload);
       }
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;

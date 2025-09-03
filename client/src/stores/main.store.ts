@@ -76,6 +76,7 @@ const default_state: IMainStoreState = {
   reportForFE: []
 }
 
+
 export const useMainStore = defineStore('main', {
   state: (): IMainStoreState => ({ ...default_state }),
   getters: {

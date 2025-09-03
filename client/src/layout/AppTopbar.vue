@@ -2,11 +2,11 @@
 import { useLayout } from '@/layout/composables/layout';
 import { onMounted } from 'vue';
 import AppConfigurator from './AppConfigurator.vue';
-// import { useMainStore } from '@/stores/main.store';
+import { useMainStore } from '@/stores/main.store';
 import { imageUrl } from '../utils/custom';
 
 const { onMenuToggle, toggleDarkMode, isDarkTheme } = useLayout();
-// const mainStore = useMainStore();
+const mainStore = useMainStore();
 
 onMounted(() => {
     // auto toggle darkmode if system is darkmode
@@ -31,23 +31,25 @@ onMounted(() => {
         </div>
 
         <div class="layout-topbar-actions flex flex-row items-center">
-            <!-- <div class="user-info-block flex items-center mr-4">
+            <div class="user-info-block flex items-center mr-4">
                 <img
                   v-if="mainStore && mainStore._userInfo?.cardcode"
                   :src="imageUrl(mainStore._userInfo.cardcode)"
+                  
                   alt="user profile"
                   style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #ccc; margin-right: 12px;"
                 />
                 <i v-else class="pi pi-user" style="font-size: 40px; margin-right: 12px;"></i>
                 <div>
                   <div class="user-name">
-                    {{ mainStore?._userInfo?.eng_name }}
+                    {{ mainStore?._userInfo?.eng_name }} 
+                    <!-- console.log(mainStore?._userInfo?.eng_name) -->
                   </div>
                   <div class="user-position">
                     {{ mainStore?._userInfo?.position_name }}
                   </div>
                 </div>
-            </div> -->
+            </div>
             <div class="layout-config-menu">
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]" />
