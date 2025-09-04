@@ -16,7 +16,7 @@ watch(isSidebarActive, (newVal) => {
         bindOutsideClickListener();
     } else {
         unbindOutsideClickListener();
-    }
+    }//test
 });
 
 const containerClass = computed(() => {
