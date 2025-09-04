@@ -29,27 +29,34 @@ onMounted(() => {
 
             </router-link>
         </div>
-
-        <div class="layout-topbar-actions flex flex-row items-center">
+        
+        <div class="layout-topbar-actions flex flex-row items-center mr-4">
             <div class="user-info-block flex items-center mr-4">
                 <img
                   v-if="mainStore && mainStore._userInfo?.cardcode"
                   :src="imageUrl(mainStore._userInfo.cardcode)"
                   
                   alt="user profile"
-                  style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #ccc; margin-right: 12px;"
+                  style="width: 40px; 
+                  height: 40px; 
+                  border-radius: 50%; 
+                  object-fit: cover; 
+                  border: 2px solid #ccc; 
+                  margin-right: 12px;"
                 />
                 <i v-else class="pi pi-user" style="font-size: 40px; margin-right: 12px;"></i>
                 <div>
                   <div class="user-name">
                     {{ mainStore?._userInfo?.eng_name }} 
-                    <!-- console.log(mainStore?._userInfo?.eng_name) -->
+                  
                   </div>
                   <div class="user-position">
                     {{ mainStore?._userInfo?.position_name }}
                   </div>
                 </div>
             </div>
+
+            
             <div class="layout-config-menu">
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]" />
@@ -72,7 +79,7 @@ onMounted(() => {
                 <i class="pi pi-ellipsis-v"></i>
             </button>
         </div>
-    </div>
+        </div>
 </template>
 
 

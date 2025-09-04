@@ -1,8 +1,21 @@
 <script lang="ts" setup>
 import { NodeService } from '@/service/NodeService';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useReceiveStore } from '@/stores/receive';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+
 const router = useRouter();
+const receiveStore = useReceiveStore();
+const loading = ref(false);
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    receiveNumber: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
+    receiveDate: { value: null, matchMode: FilterMatchMode.DATE_IS },
+    invoiceNumber: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
+    vendorCode: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
+    vendorName: { value: null, matchMode: FilterMatchMode.CONTAINS }
+});
 
 function handleRowClick(receiveNumber: string) {
     // ตัวอย่าง: ไปหน้า /receive-detail/:receiveNumber
@@ -12,47 +25,38 @@ const treeValue = ref<any[]>([]);
 
 const allReceiveList = ref<any[]>([]);
 
-
 const searchQuery = ref('');
 
-const startDate = ref('');
-const endDate = ref('');
+// ใช้ค่าจาก store แทน
+const startDate = computed({
+    get: () => receiveStore.startDate,
+    set: (value) => { receiveStore.startDate = value }
+});
 
-// กำหนด endDate เป็นวันปัจจุบัน
-function getTodayStr() {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-}
-endDate.value = getTodayStr();
+const endDate = computed({
+    get: () => receiveStore.endDate,
+    set: (value) => { receiveStore.endDate = value }
+});
 
 // กรองข้อมูลตาม searchQuery
-import { computed } from 'vue';
 const filteredReceiveList = computed(() => {
     let list = allReceiveList.value;
     // filter by searchQuery
     if (searchQuery.value) {
         const q = searchQuery.value.trim().toLowerCase();
-        list = list.filter(item => {
+        list = list.filter((item) => {
             const receive = item.receiveNumber.toLowerCase();
             const invoice = item.invoiceNumber.toLowerCase();
             // ค้นหาทั้งแบบ contains และ startsWith
-            return (
-                receive.includes(q) ||
-                invoice.includes(q) ||
-                receive.startsWith(q) ||
-                invoice.startsWith(q)
-            );
+            return receive.includes(q) || invoice.includes(q) || receive.startsWith(q) || invoice.startsWith(q);
         });
     }
     // filter by date range
     if (startDate.value) {
-        list = list.filter(item => item.receiveDate >= startDate.value.replace(/-/g, ''));
+        list = list.filter((item) => item.receiveDate >= startDate.value.replace(/-/g, ''));
     }
     if (endDate.value) {
-        list = list.filter(item => item.receiveDate <= endDate.value.replace(/-/g, ''));
+        list = list.filter((item) => item.receiveDate <= endDate.value.replace(/-/g, ''));
     }
     return list;
 });
@@ -63,6 +67,24 @@ function onSearch() {
 
 function onDateSearch() {
     // ไม่ต้องทำอะไร เพราะ filteredReceiveList จะอัปเดตอัตโนมัติ
+}
+
+function clearFilter() {
+    filters.value = {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        receiveNumber: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
+        receiveDate: { value: null, matchMode: FilterMatchMode.DATE_IS },
+        invoiceNumber: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
+        vendorCode: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
+        vendorName: { value: null, matchMode: FilterMatchMode.CONTAINS }
+    };
+}
+
+function formatDate(dateString: string) {
+    const year = dateString.substring(0, 4);
+    const month = dateString.substring(4, 6);
+    const day = dateString.substring(6, 8);
+    return `${year}-${month}-${day}`;
 }
 
 onMounted(() => {
@@ -86,9 +108,7 @@ onMounted(() => {
             invoiceNumber: 'INV-20250902-002',
             vendorCode: 'XYZ123',
             vendorName: 'XYZ Trading',
-            items: [
-                { no: 1, itemNo: 'ITEM-003', desc: 'Ibuprofen 200mg', unit: 'Box', lotExpireDate: '2026-05-10', invoiceNumber: 'INV-20250902-002', lotSplitStatus: 'Lot Required', lotStatus: 'N/A', activeStatus: 'Active', iqaStatus: 'N/A' }
-            ]
+            items: [{ no: 1, itemNo: 'ITEM-003', desc: 'Ibuprofen 200mg', unit: 'Box', lotExpireDate: '2026-05-10', invoiceNumber: 'INV-20250902-002', lotSplitStatus: 'Lot Required', lotStatus: 'N/A', activeStatus: 'Active', iqaStatus: 'N/A' }]
         },
         {
             receiveNumber: 'RC25080001',
@@ -109,55 +129,111 @@ onMounted(() => {
     <div class="card">
         <div class="font-semibold text-xl mb-4">Receive Material</div>
         <form class="mb-4 flex flex-col gap-4">
-            <label for="search" class="font-medium mb-1">Receive or Invoice Number</label>
             <div class="flex flex-col md:flex-row md:items-end gap-4">
-                <input id="search" v-model="searchQuery" type="text" placeholder="Enter number" class="p-2 border rounded md:w-48" />
-                <button type="button" class="px-4 py-2 bg-blue-500 text-white rounded" @click="onSearch">Search</button>
-
-                <div class="flex gap-4 ml-60">
+                <div class="flex gap-4">
                     <input id="startDate" v-model="startDate" type="date" class="p-2 border rounded md:w-40" />
                     <input id="endDate" v-model="endDate" type="date" class="p-2 border rounded md:w-40" />
-                    
-                    
-                    <button type="button" class="px-4 py-2 bg-green-500 text-white rounded h-fit md:mb-0 mt-0" @click="onDateSearch"> Sync Date</button>
+                    <button type="button" class="px-4 py-2 bg-green-500 text-white rounded h-fit md:mb-0 mt-0" @click="onDateSearch">Sync Date</button>
                 </div>
-<!-- 
-                <div class="flex gap-4 ml-1">
-                    <button type="button" class="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded h-fit md:mb-0 mt-0 flex items-center gap-2" @click="">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
-                        </svg>
-                        Sync Receive
-                    </button>
-                </div> -->
             </div>
         </form>
     </div>
     <div class="card">
         <div class="font-semibold text-xl mb-4">Receive Material List</div>
-        <!-- ตารางแสดงผลลัพธ์การค้นหา -->
-        <table class="min-w-full border border-gray-300 mb-6">
-            <thead class="bg-gray-100">
-                <tr>
-                    <th class="border px-4 py-2">Receive Number</th>
-                    <th class="border px-4 py-2">Receive Date</th>
-                    <th class="border px-4 py-2">Invoice Number</th>
-                    <th class="border px-4 py-2">Vendor Code</th>
-                    <th class="border px-4 py-2">Vendor Name</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="item in filteredReceiveList" :key="item.receiveNumber" class="cursor-pointer hover:bg-blue-100" @click="handleRowClick(item.receiveNumber)">
-                    <td class="border px-4 py-2">{{ item.receiveNumber }}</td>
-                    <td class="border px-4 py-2">{{ item.receiveDate }}</td>
-                    <td class="border px-4 py-2">{{ item.invoiceNumber }}</td>
-                    <td class="border px-4 py-2">{{ item.vendorCode }}</td>
-                    <td class="border px-4 py-2">{{ item.vendorName }}</td>
-                </tr>
-                <tr v-if="filteredReceiveList.length === 0">
-                    <td colspan="5" class="text-center py-4">No data found</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>  
+        <DataTable
+            :value="filteredReceiveList"
+            v-model:filters="filters"
+            paginator
+            :rows="10"
+            dataKey="receiveNumber"
+            filterDisplay="menu"
+            :loading="loading"
+            showGridlines
+            rowHover
+            @rowClick="(e) => handleRowClick(e.data.receiveNumber)"
+            :globalFilterFields="['receiveNumber', 'receiveDate', 'invoiceNumber', 'vendorCode', 'vendorName']"
+            class="mb-6"
+        >
+            <template #header>
+                <div class="flex justify-between">
+                    <Button
+                        type="button"
+                        icon="pi pi-filter-slash"
+                        label="Clear"
+                        variant="outlined"
+                        @click="clearFilter()"
+                    />
+                    <IconField>
+                        <InputIcon>
+                            <i class="pi pi-search" />
+                        </InputIcon>
+                        <InputText
+                            v-model="filters['global'].value"
+                            placeholder="Keyword Search"
+                        />
+                    </IconField>
+                </div>
+            </template>
+
+            <template #empty>No data found.</template>
+            <template #loading>Loading data. Please wait.</template>
+
+            <Column field="receiveNumber" header="Receive Number" sortable>
+                <template #filter="{ filterModel }">
+                    <InputText
+                        v-model="filterModel.value"
+                        type="text"
+                        class="p-column-filter"
+                        placeholder="Search by receive number"
+                    />
+                </template>
+            </Column>
+
+            <Column field="receiveDate" header="Receive Date" sortable>
+                <template #body="{ data }">
+                    {{ formatDate(data.receiveDate) }}
+                </template>
+                <template #filter="{ filterModel }">
+                    <DatePicker
+                        v-model="filterModel.value"
+                        dateFormat="yy-mm-dd"
+                        placeholder="yyyy-mm-dd"
+                    />
+                </template>
+            </Column>
+
+            <Column field="invoiceNumber" header="Invoice Number" sortable>
+                <template #filter="{ filterModel }">
+                    <InputText
+                        v-model="filterModel.value"
+                        type="text"
+                        class="p-column-filter"
+                        placeholder="Search by invoice"
+                    />
+                </template>
+            </Column>
+
+            <Column field="vendorCode" header="Vendor Code" sortable>
+                <template #filter="{ filterModel }">
+                    <InputText
+                        v-model="filterModel.value"
+                        type="text"
+                        class="p-column-filter"
+                        placeholder="Search by vendor code"
+                    />
+                </template>
+            </Column>
+
+            <Column field="vendorName" header="Vendor Name" sortable>
+                <template #filter="{ filterModel }">
+                    <InputText
+                        v-model="filterModel.value"
+                        type="text"
+                        class="p-column-filter"
+                        placeholder="Search by vendor name"
+                    />
+                </template>
+            </Column>
+        </DataTable>
+    </div>
 </template>
