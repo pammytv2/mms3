@@ -3,9 +3,15 @@ import { label } from '@primeuix/themes/aura/metergroup';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-
+import { reactive, ref, toRefs, nextTick, computed } from 'vue';
+import { useRouter } from 'vue-router';
+const router = useRouter();
 const toast = useToast();
 const confirmPopup = useConfirm();
+
+const goBack = () => {
+    router.back();
+};
 
 // คำนวณ Balance QTY = Receive QTY - Take Out QTY
 function getBalanceQty(receiveQty: number | string, takeOutQty: number | string) {
@@ -18,7 +24,7 @@ function getReturnQty(receiveQty: number | string, returnQty: number | string) {
     const r = parseFloat(receiveQty as string) || 0;
     const t = parseFloat(returnQty as string) || 0;
     return Math.max(t + r, 0);
-}
+} //ไม่ต้องมีก็ได้
 
 function colorBalanceQty(balanceQty: number) {
     if (balanceQty === 0) return 'font-semibold bg-green-100 text-green-600 px-3 py-1 rounded select-text';
@@ -27,20 +33,13 @@ function colorBalanceQty(balanceQty: number) {
 }
 
 function getIQAStatusClass(status: string) {
+    if (status === 'Unchecked') return 'bg-gray-200 text-gray-700 font-semibold px-2 py-1 rounded';
     if (status === 'Pending') return 'bg-yellow-200 text-yellow-700 font-semibold px-2 py-1 rounded';
     if (status === 'Passed') return 'bg-green-200 text-green-700 font-semibold px-2 py-1 rounded';
     if (status === 'Failed') return 'bg-red-200 text-red-700 font-semibold px-2 py-1 rounded';
     return 'px-2 py-1 rounded';
 }
 // สำหรับ v-model ของแต่ละ select ในตัวอย่าง
-import { reactive, ref, toRefs, nextTick, computed } from 'vue';
-import { useRouter } from 'vue-router';
-
-const router = useRouter();
-
-const goBack = () => {
-    router.back();
-};
 
 // mock data สำหรับหัวข้อ (ควรดึงจาก API จริงในอนาคต)
 const receiveNumber = 'RC25070359';
@@ -57,7 +56,7 @@ const tableRows = reactive([
         unit: 'Box',
         lotExpireDate: '2025-01-31',
         invoice: 'INV-20250901-001',
-        lotSplitStatusIdx: 0,
+        lotSplitStatusIdx: 0, // Not Specified
         iqaStatus: 'Pending',
         receiveQty: '10000',
         takeOutQty: '',
@@ -71,7 +70,7 @@ const tableRows = reactive([
         unit: 'Bottle',
         lotExpireDate: '2025-03-15',
         invoice: 'INV-20250902-002',
-        lotSplitStatusIdx: 2,
+        lotSplitStatusIdx: 1, // Lot Required
         iqaStatus: 'Failed',
         receiveQty: '10000',
         takeOutQty: '',
@@ -85,8 +84,22 @@ const tableRows = reactive([
         unit: 'Bottle',
         lotExpireDate: '2025-03-15',
         invoice: 'INV-20250902-002',
-        lotSplitStatusIdx: 1,
+        lotSplitStatusIdx: 2, // No Lot Required
         iqaStatus: 'Passed',
+        receiveQty: '10000',
+        takeOutQty: '',
+        returnQty: '',
+        balanceQty: ''
+    },
+    {
+        no: '4',
+        itemNo: 'ITEM-004',
+        description: 'Cefalexin 500mg',
+        unit: 'Box',
+        lotExpireDate: '2026-01-01',
+        invoice: 'INV-20250904-003',
+        lotSplitStatusIdx: 3, // Not Specified
+        iqaStatus: 'Unchecked',
         receiveQty: '10000',
         takeOutQty: '',
         returnQty: '',
@@ -111,12 +124,19 @@ const filteredRows = computed(() => {
 // สำหรับ scroll กลับไปยังตาราง Detail
 const detailTableRef = ref<HTMLElement | null>(null);
 
-const lotSplitStatusList = reactive([{ value: 'Not Specified' }, { value: 'Not Specified' }, { value: 'Not Specified' }]);
+const lotSplitStatusList = reactive([{ value: 'Not Specified' }, { value: 'Not Specified' }, { value: 'Not Specified' }, { value: 'Not Specified' }]);
 
 function getLotSplitStatusClass(status: string) {
-    if (status === 'Lot Required') return 'bg-green-100 text-green-700';
-    if (status === 'No Lot Required') return 'bg-red-100 text-red-700';
-    return 'bg-white text-gray-900';
+    switch (status) {
+        case 'Lot Required':
+            return 'bg-green-100 text-green-700 font-semibold transition-colors duration-200';
+        case 'No Lot Required':
+            return 'bg-red-100 text-red-700 font-semibold transition-colors duration-200';
+        case 'Not Specified':
+            return 'bg-gray-100 text-gray-700 font-semibold transition-colors duration-200';
+        default:
+            return 'bg-white text-gray-900 transition-colors duration-200';
+    }
 }
 import { useRoute } from 'vue-router';
 const route = useRoute();
@@ -142,7 +162,7 @@ function expireDateEnd(date: string) {
     const today = new Date();
     const expire = new Date(date);
     const diffTime = expire.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // คำนวณจำนวนวัน
     if (diffDays < 0) {
         return 'bg-red-200 text-red-700 font-semibold px-2 py-1 rounded'; // หมดอายุ
     } else if (diffDays <= 15) {
@@ -202,7 +222,7 @@ function removeRow(index: number) {
 }
 
 const searchQuery = ref('');
-const checkboxValue = ref(false);
+// const checkboxValue = ref(false);
 const loading = ref(false);
 const selectedRows = ref([]);
 const filters = ref({
@@ -217,15 +237,6 @@ const filters = ref({
     iqaStatus: { value: null, matchMode: FilterMatchMode.EQUALS }
 });
 
-function onSearch() {
-    // Implement your search logic here
-    console.log('Searching for:', searchQuery.value);
-}
-
-function handleRowClick(receiveNumber: string) {
-    // Implement your row click logic here
-    console.log('Row clicked:', receiveNumber);
-}
 function confirm(event) {
     confirmPopup.require({
         target: event.target,
@@ -270,11 +281,9 @@ function clearFilter() {
 </script>
 
 <template>
-  
     <div class="card mb-6">
         <Button icon="pi pi-arrow-left" @click="goBack" severity="secondary" outlined />
         <div class="flex items-center gap-4 mb-4">
-           
             <div class="text-2xl font-bold">Receive Material Detail</div>
         </div>
         <!-- card Detail -->
@@ -316,12 +325,7 @@ function clearFilter() {
     </div>
     <div class="card mb-6">
         <div class="font-semibold text-xl mb-2">Receive Material List</div>
-        <div class="flex flex-col md:flex-row md:items-end justify-end w-full mb-4 gap-4">
-            <form class="flex flex-col md:flex-row md:items-end gap-2 md:w-auto">
-                <input id="search" v-model="searchQuery" type="text" placeholder="Search" class="p-2 border rounded md:w-48" />
-                <button type="button" class="px-4 py-2 bg-blue-500 text-white rounded" @click="onSearch">Search</button>
-            </form>
-        </div>
+
         <DataTable
             ref="detailTableRef"
             :value="filteredRows"
@@ -339,27 +343,18 @@ function clearFilter() {
         >
             <template #header>
                 <div class="flex justify-between">
-                    <Button
-                        type="button"
-                        icon="pi pi-filter-slash"
-                        label="Clear"
-                        variant="outlined"
-                        @click="clearFilter()"
-                    />
+                    <Button type="button" icon="pi pi-filter-slash" label="Clear" variant="outlined" @click="clearFilter()" />
                     <IconField>
                         <InputIcon>
                             <i class="pi pi-search" />
                         </InputIcon>
-                        <InputText
-                            v-model="filters['global'].value"
-                            placeholder="Keyword Search"
-                        />
+                        <InputText v-model="filters['global'].value" placeholder="Keyword Search" />
                     </IconField>
                 </div>
             </template>
 
             <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-            
+
             <Column field="no" header="No" sortable>
                 <template #filter="{ filterModel }">
                     <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by no" />
@@ -387,24 +382,11 @@ function clearFilter() {
             <Column field="lotExpireDate" header="Expire Date" sortable :style="{ minWidth: '200px' }">
                 <template #body="{ data }">
                     <div :class="[expireDateEnd(data.lotExpireDate), 'w-full', 'h-full', 'flex', 'items-center', 'justify-center', 'rounded']">
-                        <Calendar 
-                            v-model="data.lotExpireDate" 
-                            dateFormat="yy-mm-dd" 
-                            :showIcon="true" 
-                            :showButtonBar="true"
-                            class="w-full"
-                            :baseZIndex="1000"
-                        />
+                        <Calendar v-model="data.lotExpireDate" dateFormat="yy-mm-dd" :showIcon="true" :showButtonBar="true" class="w-full" :baseZIndex="1000" />
                     </div>
                 </template>
                 <template #filter="{ filterModel }">
-                    <Calendar 
-                        v-model="filterModel.value" 
-                        dateFormat="yy-mm-dd" 
-                        placeholder="Select Date"
-                        :showButtonBar="true"
-                        class="w-full"
-                    />
+                    <Calendar v-model="filterModel.value" dateFormat="yy-mm-dd" placeholder="Select Date" :showButtonBar="true" class="w-full" />
                 </template>
             </Column>
 
@@ -443,15 +425,33 @@ function clearFilter() {
                     <Dropdown
                         v-model="lotSplitStatusList[data.lotSplitStatusIdx].value"
                         :options="['Not Specified', 'Lot Required', 'No Lot Required']"
-                        :class="getLotSplitStatusClass(lotSplitStatusList[data.lotSplitStatusIdx].value)"
-                    />
+                        :pt="{
+                            root: { class: 'w-full' },
+                            input: { class: 'w-full ' + getLotSplitStatusClass(lotSplitStatusList[data.lotSplitStatusIdx].value) }
+                        }"
+                    >
+                        <template #value="{ value }">
+                            <span :class="getLotSplitStatusClass(value)">{{ value }}</span>
+                        </template>
+                        <template #option="{ option }">
+                            <span :class="getLotSplitStatusClass(option)">{{ option }}</span>
+                        </template>
+                    </Dropdown>
                 </template>
                 <template #filter="{ filterModel }">
                     <Dropdown
                         v-model="filterModel.value"
                         :options="['Not Specified', 'Lot Required', 'No Lot Required']"
                         placeholder="Select Status"
-                    />
+                        :item-class="option => getLotSplitStatusClass(option)"
+                    >
+                        <template #value="{ value }">
+                            <span :class="getLotSplitStatusClass(value)">{{ value }}</span>
+                        </template>
+                        <template #option="{ option }">
+                            <span :class="getLotSplitStatusClass(option)">{{ option }}</span>
+                        </template>
+                    </Dropdown>
                 </template>
             </Column>
 
@@ -460,11 +460,7 @@ function clearFilter() {
                     <span :class="getIQAStatusClass(data.iqaStatus)">{{ data.iqaStatus }}</span>
                 </template>
                 <template #filter="{ filterModel }">
-                    <Dropdown
-                        v-model="filterModel.value"
-                        :options="['Pending', 'Passed', 'Failed']"
-                        placeholder="Select Status"
-                    />
+                    <Dropdown v-model="filterModel.value" :options="['Unchecked','Pending', 'Passed', 'Failed']" placeholder="Select Status" />
                 </template>
             </Column>
 
@@ -480,13 +476,10 @@ function clearFilter() {
             <Button ref="popup" @click="Success()" icon="pi pi-check" label="Submit to IQA" class="mr-2"></Button>
         </div>
 
-
         <div v-if="isDialogOpen" class="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-40">
             <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-4xl relative">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                     <div class="flex flex-col gap-4">
-                        
-                       
                         <div class="flex items-center gap-2">
                             <span class="text-muted-color font-medium">Item No:</span>
                             <span class="font-semibold bg-blue-100 text-blue-600 px-3 py-1 rounded select-text">
@@ -501,8 +494,6 @@ function clearFilter() {
                         </div>
                     </div>
                     <div class="flex flex-col gap-4">
-                        
-                        
                         <div class="flex items-center gap-2">
                             <span class="text-muted-color font-medium">Receive QTY:</span>
                             <span class="font-semibold bg-blue-100 text-blue-600 px-3 py-1 rounded select-text">
@@ -532,7 +523,6 @@ function clearFilter() {
                                 <th class="border px-2 py-1">have a problem?</th>
                                 <th class="border px-2 py-1">REMARK</th>
                                 <th class="border px-2 py-1">ACTIONS</th>
-                                
                             </tr>
                         </thead>
 
@@ -557,11 +547,7 @@ function clearFilter() {
                                         v-model="row.takeOutQty"
                                         step="any"
                                         @input="
-                                            if (
-                                                dialogRowIndex !== null &&
-                                                parseFloat(row.takeOutQty || '') >
-                                                    (parseFloat(tableRows[dialogRowIndex].receiveQty || '') || 0)
-                                            ) {
+                                            if (dialogRowIndex !== null && parseFloat(row.takeOutQty || '') > (parseFloat(tableRows[dialogRowIndex].receiveQty || '') || 0)) {
                                                 row.takeOutQty = (parseFloat(tableRows[dialogRowIndex].receiveQty || '') || 0).toString();
                                                 toast.add({ severity: 'warn', summary: 'Warning', detail: 'Take Out Qty ห้ามเกิน Receive Qty', life: 2000 });
                                             }
@@ -572,12 +558,7 @@ function clearFilter() {
                                     <input type="date" class="border rounded px-2 py-1 w-36" v-model="row.expireDate" :class="expireDateEnd(row.expireDate)" />
                                 </td>
                                 <td class="border px-2 py-1">
-                                    <Checkbox
-                                        :id="'checkOption' + idx"
-                                        name="option"
-                                        :value="true"
-                                        v-model="row.problem"
-                                    />
+                                    <Checkbox :id="'checkOption' + idx" name="option" :value="true" v-model="row.problem" />
                                 </td>
                                 <td class="border px-2 py-1">
                                     <input type="text" class="border rounded px-2 py-1 w-36" v-model="row.remark" />
@@ -587,48 +568,19 @@ function clearFilter() {
                                 </td>
                             </tr>
                         </tbody>
-                       
+
                         <tfoot>
                             <tr>
                                 <td colspan="8" class="text-left font-semibold py-2 pl-4">
-                                    <span
-                                        :class="colorBalanceQty(
-                                            dialogRowIndex !== null
-                                                ? Math.max(
-                                                    (parseFloat(tableRows[dialogRowIndex].receiveQty || '') || 0) -
-                                                    lotRows.reduce((sum, r) => sum + (parseFloat(r.takeOutQty || '') || 0), 0),
-                                                    0
-                                                )
-                                                : 0
-                                        )"
-                                    >
+                                    <span :class="colorBalanceQty(dialogRowIndex !== null ? Math.max((parseFloat(tableRows[dialogRowIndex].receiveQty || '') || 0) - lotRows.reduce((sum, r) => sum + (parseFloat(r.takeOutQty || '') || 0), 0), 0) : 0)">
                                         Balance Qty:
-                                        {{
-                                            dialogRowIndex !== null
-                                                ? Math.max(
-                                                    (parseFloat(tableRows[dialogRowIndex].receiveQty || '') || 0) -
-                                                    lotRows.reduce((sum, r) => sum + (parseFloat(r.takeOutQty || '') || 0), 0),
-                                                    0
-                                                )
-                                                : 0 
-                                        }}
-                                        <span class="colorBalanceQty">
-                                           / {{
-                                               dialogRowIndex !== null
-                                                   ? (parseFloat(tableRows[dialogRowIndex].receiveQty || '') || 0)
-                                                   : 0
-                                            }}
-                                        </span>
+                                        {{ dialogRowIndex !== null ? Math.max((parseFloat(tableRows[dialogRowIndex].receiveQty || '') || 0) - lotRows.reduce((sum, r) => sum + (parseFloat(r.takeOutQty || '') || 0), 0), 0) : 0 }}
+                                        <span class="colorBalanceQty"> / {{ dialogRowIndex !== null ? parseFloat(tableRows[dialogRowIndex].receiveQty || '') || 0 : 0 }} </span>
                                     </span>
                                 </td>
                             </tr>
                         </tfoot>
-                        
-                         
                     </table>
-                    
-                   
-                    
                 </div>
                 <div class="flex justify-end gap-2">
                     <button class="px-4 py-2 bg-blue-500 text-white rounded" @click="addRow">+ Add Row</button>

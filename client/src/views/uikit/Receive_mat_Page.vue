@@ -61,12 +61,9 @@ const filteredReceiveList = computed(() => {
     return list;
 });
 
-function onSearch() {
-    // ไม่ต้องทำอะไร เพราะ filteredReceiveList จะอัปเดตอัตโนมัติ
-}
 
 function onDateSearch() {
-    // ไม่ต้องทำอะไร เพราะ filteredReceiveList จะอัปเดตอัตโนมัติ
+    // เพิ่ม logic การค้นหาตามวันที่ที่นี่
 }
 
 function clearFilter() {
